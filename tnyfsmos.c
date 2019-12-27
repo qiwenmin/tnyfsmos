@@ -33,7 +33,7 @@ void process_delay_waiting() {
     }
 }
 
-unsigned int millis() {
+unsigned int millis() __critical {
     return _millis;
 }
 
