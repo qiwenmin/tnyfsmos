@@ -15,17 +15,25 @@
 
 #include "tnyfsmos.h"
 
+#if defined(__AVR__)
+
+#include <stdio.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+#endif
+
 extern __tfo_task_cb __tfo_tasks[];
 extern const unsigned char __tfo_task_count;
 
 void init_timer();
 
-volatile unsigned int _millis = 0;
+static volatile unsigned int __tfo_ms = 0;
 
 void process_delay_waiting() {
     for (unsigned char task_id = 0; task_id < __tfo_task_count; task_id ++) {
         if (TFO_STATE_DELAYING(__tfo_tasks[task_id].state)) {
-            if (__tfo_tasks[task_id].delay_until == millis()) {
+            if (__tfo_tasks[task_id].delay_until == __tfo_ms) {
                 __tfo_tasks[task_id].delay_until = 0;
                 __tfo_tasks[task_id].state &= (~__TFO_STATE_FLAGS_MASK);
             }
@@ -33,9 +41,26 @@ void process_delay_waiting() {
     }
 }
 
-unsigned int millis() __critical {
-    return _millis;
+#if defined(__SDCC)
+
+unsigned int tfo_millis() __critical {
+    return __tfo_ms;
 }
+
+#elif defined(__AVR__)
+
+unsigned int tfo_millis() {
+    unsigned int m;
+    uint8_t oldSREG = SREG;
+
+    cli();
+    m = __tfo_ms;
+    SREG = oldSREG;
+
+    return m;
+}
+
+#endif
 
 tfo_task_state tfo_get_task_state(unsigned char task_id) {
     return __tfo_tasks[(task_id)].state;
@@ -64,7 +89,7 @@ void tfo_delay(unsigned char task_id, unsigned int delay_ms, tfo_task_state stat
 }
 
 void tfo_delay_force(unsigned char task_id, unsigned int delay_ms, tfo_task_state state) {
-    __tfo_tasks[task_id].delay_until = delay_ms + millis();
+    __tfo_tasks[task_id].delay_until = delay_ms + tfo_millis();
 
     __tfo_tasks[task_id].state = state | __TFO_STATE_DELAYING_MASK;
 }
@@ -86,18 +111,52 @@ void tfo_init_os() {
 }
 
 /*********************************************************************
+ * Arduino MiniCore ATMega8
+ */
+#ifdef ARDUINO_AVR_ATmega8
+
+#if (F_CPU == 1000000L)
+
+// for 125 ticks
+#define TCNT0_INIT (130)
+
+// for clock freq / 8
+#define TCCR0_INIT (0x02)
+
+#endif
+
+void init_timer() {
+    TCCR0 = TCCR0_INIT; // clock frequency / 1024
+    TIMSK |= (1 << TOIE0); // Enable overflow interrupt
+    TCNT0 = TCNT0_INIT; // Start to count from zero
+
+    sei();
+}
+
+ISR(TIMER0_OVF_vect) // Timer 0 overflow vector - this run every time timer0 overflows
+{
+    TIMSK &= ~(1 << TOIE0);
+
+    process_delay_waiting();
+
+    __tfo_ms ++;
+
+    TIMSK |= (1 << TOIE0);
+    TCNT0 = TCNT0_INIT;
+}
+#endif
+
+/*********************************************************************
  * MCS51
  *********************************************************************/
 #ifdef __SDCC_mcs51
 
 #define FOSC 6000000
 
-extern volatile unsigned int _millis;
-
 void timer2_isr() __interrupt 12 {
     process_delay_waiting();
 
-    _millis ++;
+    __tfo_ms ++;
 }
 
 void init_timer() {
@@ -110,7 +169,7 @@ void init_timer() {
     AUXR |= 0x10; // Start Timer2
     IE2 |= 0x04; // Enable Timer2 interrupt
 
-	EA = 1; // Open global interrupt switch
+    EA = 1; // Open global interrupt switch
 }
 
 #endif // __SDCC_mcs51
@@ -122,14 +181,12 @@ void init_timer() {
 
 #include "stm8util.h"
 
-extern volatile unsigned int _millis;
-
 void timer4_millis_isr() __interrupt(TIM4_ISR) {
     clear_bit(TIM4_SR, TIM4_SR_UIF);
 
     process_delay_waiting();
 
-    _millis ++;
+    __tfo_ms ++;
 }
 
 void init_timer() {
