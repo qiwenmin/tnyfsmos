@@ -153,13 +153,30 @@ ISR(TIMER0_OVF_vect) // Timer 0 overflow vector - this run every time timer0 ove
 
 #define FOSC 6000000
 
+extern volatile unsigned int _millis;
+
+#ifdef STC8G1K08
+void timer1_isr() __interrupt 3 {
+#else
 void timer2_isr() __interrupt 12 {
+#endif // STC8G1K08
     process_delay_waiting();
 
     __tfo_ms ++;
 }
 
 void init_timer() {
+#ifdef STC8G1K08
+    AUXR &= ~0x40; //Timer1 clock is 12T mode
+    TMOD &= 0x0F;
+
+    // 1ms
+    TL1 = (0x10000 - FOSC / 12 / 1000) & 0xFF;
+    TH1 = (0x10000 - FOSC / 12 / 1000) >> 8;
+    TF1 = 0;
+    TR1 = 1;
+    ET1 = 1;
+#else
     AUXR &= ~0x04; //Timer2 clock is 12T mode
 
     // 1ms
@@ -168,6 +185,7 @@ void init_timer() {
 
     AUXR |= 0x10; // Start Timer2
     IE2 |= 0x04; // Enable Timer2 interrupt
+#endif // STC8G1K08
 
     EA = 1; // Open global interrupt switch
 }

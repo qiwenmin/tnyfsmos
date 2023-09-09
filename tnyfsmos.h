@@ -34,7 +34,11 @@ typedef struct {
 } __tfo_task_cb;
 
 #if defined(__SDCC_mcs51)
+#ifdef STC8G1K08
+    #define __TFO_TIMER_DECL void timer1_isr() __interrupt 3
+#else
     #define __TFO_TIMER_DECL void timer2_isr() __interrupt 12
+#endif // STC8G1K08
 #elif defined(__SDCC_stm8)
     #define __TFO_TIMER_DECL void timer4_millis_isr() __interrupt(TIM4_ISR)
 #endif
