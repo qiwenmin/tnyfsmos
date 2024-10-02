@@ -16,12 +16,12 @@ enum {
 
 #define LED_PIN P3_5
 
-static void init_led() {
+static void init_led(void) {
     P3M0 |= (1 << 5);
     LED_PIN = 1;
 }
 
-static void toggle_led() {
+static void toggle_led(void) {
     LED_PIN = !LED_PIN;
 }
 
@@ -31,20 +31,20 @@ static void toggle_led() {
 
 #include "../../stm8util.h"
 
-static void init_led() {
+static void init_led(void) {
     set_bit(PB_DDR, 5);
     set_bit(PB_CR1, 5);
 
     clear_bit(PB_ODR, 5);
 }
 
-static void toggle_led() {
+static void toggle_led(void) {
     toggle_bit(PB_ODR, 5);
 }
 
 #endif // __SDCC_stm8
 
-static void blinky_state_machine() {
+static void blinky_state_machine(void) {
     tfo_task_state state = tfo_get_task_state(TASK_BLINKY);
 
     if (TFO_STATE_FLAGS(state)) return;
@@ -61,7 +61,7 @@ static void blinky_state_machine() {
     }
 }
 
-void main() {
+void main(void) {
     tfo_init_os();
 
     while (1) {

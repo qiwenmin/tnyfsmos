@@ -26,11 +26,11 @@
 extern __tfo_task_cb __tfo_tasks[];
 extern const unsigned char __tfo_task_count;
 
-void init_timer();
+void init_timer(void);
 
 static volatile unsigned int __tfo_ms = 0;
 
-void process_delay_waiting() {
+void process_delay_waiting(void) {
     for (unsigned char task_id = 0; task_id < __tfo_task_count; task_id ++) {
         if (TFO_STATE_DELAYING(__tfo_tasks[task_id].state)) {
             if (__tfo_tasks[task_id].delay_until == __tfo_ms) {
@@ -43,13 +43,13 @@ void process_delay_waiting() {
 
 #if defined(__SDCC)
 
-unsigned int tfo_millis() __critical {
+unsigned int tfo_millis(void) __critical {
     return __tfo_ms;
 }
 
 #elif defined(__AVR__)
 
-unsigned int tfo_millis() {
+unsigned int tfo_millis(void) {
     unsigned int m;
     uint8_t oldSREG = SREG;
 
@@ -100,7 +100,7 @@ static void init_task_cb(unsigned char task_id) {
     p->delay_until = 0;
 }
 
-void tfo_init_os() {
+void tfo_init_os(void) {
     // Initialize all task control blocks.
     for (unsigned char i = 0; i < __tfo_task_count; i ++) {
         init_task_cb(i);
@@ -125,7 +125,7 @@ void tfo_init_os() {
 
 #endif
 
-void init_timer() {
+void init_timer(void) {
     TCCR0 = TCCR0_INIT; // clock frequency / 1024
     TIMSK |= (1 << TOIE0); // Enable overflow interrupt
     TCNT0 = TCNT0_INIT; // Start to count from zero
@@ -156,16 +156,16 @@ ISR(TIMER0_OVF_vect) // Timer 0 overflow vector - this run every time timer0 ove
 extern volatile unsigned int _millis;
 
 #ifdef STC8G1K08
-void timer1_isr() __interrupt 3 {
+void timer1_isr(void) __interrupt (3) {
 #else
-void timer2_isr() __interrupt 12 {
+void timer2_isr(void) __interrupt (12) {
 #endif // STC8G1K08
     process_delay_waiting();
 
     __tfo_ms ++;
 }
 
-void init_timer() {
+void init_timer(void) {
 #ifdef STC8G1K08
     AUXR &= ~0x40; //Timer1 clock is 12T mode
     TMOD &= 0x0F;
@@ -199,7 +199,7 @@ void init_timer() {
 
 #include "stm8util.h"
 
-void timer4_millis_isr() __interrupt(TIM4_ISR) {
+void timer4_millis_isr(void) __interrupt(TIM4_ISR) {
     clear_bit(TIM4_SR, TIM4_SR_UIF);
 
     process_delay_waiting();
@@ -207,7 +207,7 @@ void timer4_millis_isr() __interrupt(TIM4_ISR) {
     __tfo_ms ++;
 }
 
-void init_timer() {
+void init_timer(void) {
     enable_interrupts();
     TIM4_PSCR = 3;
     TIM4_ARR = 249;

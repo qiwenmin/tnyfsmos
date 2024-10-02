@@ -35,12 +35,12 @@ typedef struct {
 
 #if defined(__SDCC_mcs51)
 #ifdef STC8G1K08
-    #define __TFO_TIMER_DECL void timer1_isr() __interrupt 3
+    #define __TFO_TIMER_DECL void timer1_isr(void) __interrupt (3)
 #else
-    #define __TFO_TIMER_DECL void timer2_isr() __interrupt 12
+    #define __TFO_TIMER_DECL void timer2_isr(void) __interrupt (12)
 #endif // STC8G1K08
 #elif defined(__SDCC_stm8)
-    #define __TFO_TIMER_DECL void timer4_millis_isr() __interrupt(TIM4_ISR)
+    #define __TFO_TIMER_DECL void timer4_millis_isr(void) __interrupt(TIM4_ISR)
 #endif
 
 #if defined(__AVR__)
@@ -68,9 +68,9 @@ typedef struct {
 #define TFO_STATE_FLAGS(v) ((v) & (__TFO_STATE_FLAGS_MASK))
 #define TFO_STATE_IS_WATING_FOR(v, s) (v == (s | __TFO_STATE_DELAYING_MASK))
 
-unsigned int tfo_millis();
+unsigned int tfo_millis(void);
 
-void tfo_init_os();
+void tfo_init_os(void);
 
 tfo_task_state tfo_get_task_state(unsigned char task_id);
 
